@@ -1,0 +1,170 @@
+@echo off
+setlocal
+title Create Octo Vault Structure
+
+echo ============================================
+echo   Create Octo Vault Structure
+echo ============================================
+echo.
+echo   Folder : %~dp0
+echo.
+echo   Existing folders are reused.
+echo   Existing .bat files are overwritten (they are tiny).
+echo   Existing .ps1 files are NOT overwritten.
+echo.
+set /p CONFIRM=Continue? (y/N):
+if /I not "%CONFIRM%"=="y" goto :end
+
+set "TPL=%USERPROFILE%\Documents\OpenOctoFun\octo-config"
+
+echo.
+echo [1/4] Creating folders...
+call :mkdir "00-Drop-Notes-Here"
+call :mkdir "01-Organize-The-Day"
+call :mkdir "02-Generate-Ideas"
+call :mkdir "03-Tidy-Up-Ideas"
+call :mkdir "04-Ready-AI-Instructions"
+call :mkdir "05-Build-Tasks"
+call :mkdir "octo-config"
+
+echo.
+echo [2/4] Copying .ps1 files from template...
+if not exist "%TPL%\" (
+  echo.
+  echo   ERROR: Template folder not found:
+  echo          %TPL%
+  echo.
+  echo   Edit the TPL= line near the top of this .bat
+  echo   so it points at your working OpenOctoFun\octo-config folder.
+  goto :end
+)
+
+call :copyfile squash-idea.ps1
+call :copyfile review-prompt.ps1
+call :copyfile watch-new-notes.ps1
+
+echo.
+echo [3/4] Writing .bat launchers...
+call :writebat "Squash-New-Idea.bat"
+call :writebat "start-assistant.bat"
+call :writebat "stop-assistant.bat"
+
+echo.
+echo [4/4] State file...
+if not exist "%~dp0octo-config\processed.txt" (
+  type nul > "%~dp0octo-config\processed.txt"
+  echo    + processed.txt ^(empty^)
+) else (
+  echo    = processed.txt ^(exists, kept^)
+)
+
+echo.
+echo ============================================
+echo   Done.
+echo.
+echo   Double-click to use:
+echo     octo-config\start-assistant.bat
+echo     octo-config\Squash-New-Idea.bat
+echo     octo-config\stop-assistant.bat
+echo ============================================
+echo.
+goto :end
+
+REM -------- helpers --------
+
+:mkdir
+if exist "%~dp0%~1\" (
+  echo    = %~1  ^(exists^)
+) else (
+  mkdir "%~dp0%~1"
+  echo    + %~1
+)
+goto :eof
+
+:copyfile
+if exist "%~dp0octo-config\%~1" (
+  echo    = %~1  ^(exists, skipped^)
+  goto :eof
+)
+if exist "%TPL%\%~1" (
+  copy /Y "%TPL%\%~1" "%~dp0octo-config\%~1" >nul
+  echo    + %~1
+) else (
+  echo    - %~1  ^(NOT IN TEMPLATE^)
+)
+goto :eof
+
+:writebat
+REM %1 = filename. Writes the correct content for each known launcher.
+if /I "%~1"=="Squash-New-Idea.bat"  goto :wb_squash
+if /I "%~1"=="start-assistant.bat"  goto :wb_start
+if /I "%~1"=="stop-assistant.bat"   goto :wb_stop
+goto :eof
+
+:wb_squash
+>  "%~dp0octo-config\Squash-New-Idea.bat" echo @echo off
+>> "%~dp0octo-config\Squash-New-Idea.bat" echo title Squash New Idea
+>> "%~dp0octo-config\Squash-New-Idea.bat" echo powershell -NoProfile -ExecutionPolicy Bypass -File "%%~dp0squash-idea.ps1"
+>> "%~dp0octo-config\Squash-New-Idea.bat" echo echo.
+>> "%~dp0octo-config\Squash-New-Idea.bat" echo pause
+echo    + Squash-New-Idea.bat
+goto :eof
+
+:wb_start
+>  "%~dp0octo-config\start-assistant.bat" echo @echo off
+>> "%~dp0octo-config\start-assistant.bat" echo setlocal
+>> "%~dp0octo-config\start-assistant.bat" echo title Start Octo Assistant
+>> "%~dp0octo-config\start-assistant.bat" echo echo ============================================
+>> "%~dp0octo-config\start-assistant.bat" echo echo   Starting Octo Assistant
+>> "%~dp0octo-config\start-assistant.bat" echo echo ============================================
+>> "%~dp0octo-config\start-assistant.bat" echo echo.
+>> "%~dp0octo-config\start-assistant.bat" echo set "VAULT_PATH=%%~dp0.."
+>> "%~dp0octo-config\start-assistant.bat" echo set "OCTO_BIN=%%USERPROFILE%%\.local\bin\octo.exe"
+>> "%~dp0octo-config\start-assistant.bat" echo echo [1/2] Starting Ollama...
+>> "%~dp0octo-config\start-assistant.bat" echo tasklist /FI "IMAGENAME eq ollama.exe" 2^>nul ^| find /I "ollama.exe" ^>nul
+>> "%~dp0octo-config\start-assistant.bat" echo if errorlevel 1 (
+>> "%~dp0octo-config\start-assistant.bat" echo     start "" /B "%%LOCALAPPDATA%%\Programs\Ollama\ollama.exe" serve
+>> "%~dp0octo-config\start-assistant.bat" echo     echo     Ollama launching, waiting 3s...
+>> "%~dp0octo-config\start-assistant.bat" echo     timeout /t 3 ^>nul
+>> "%~dp0octo-config\start-assistant.bat" echo ) else (
+>> "%~dp0octo-config\start-assistant.bat" echo     echo     Ollama already running.
+>> "%~dp0octo-config\start-assistant.bat" echo )
+>> "%~dp0octo-config\start-assistant.bat" echo echo [2/2] Starting Octo server...
+>> "%~dp0octo-config\start-assistant.bat" echo cd /d "%%VAULT_PATH%%"
+>> "%~dp0octo-config\start-assistant.bat" echo start "" /B "%%OCTO_BIN%%" serve -d
+>> "%~dp0octo-config\start-assistant.bat" echo echo     Octo server on http://127.0.0.1:8088
+>> "%~dp0octo-config\start-assistant.bat" echo echo.
+>> "%~dp0octo-config\start-assistant.bat" echo echo Ready. Double-click Squash-New-Idea.bat to use it.
+>> "%~dp0octo-config\start-assistant.bat" echo timeout /t 5 ^>nul
+>> "%~dp0octo-config\start-assistant.bat" echo endlocal
+echo    + start-assistant.bat
+goto :eof
+
+:wb_stop
+>  "%~dp0octo-config\stop-assistant.bat" echo @echo off
+>> "%~dp0octo-config\stop-assistant.bat" echo setlocal
+>> "%~dp0octo-config\stop-assistant.bat" echo title Stop Octo Assistant
+>> "%~dp0octo-config\stop-assistant.bat" echo echo [1/4] Stopping watcher...
+>> "%~dp0octo-config\stop-assistant.bat" echo taskkill /F /IM node.exe   ^>nul 2^>^&1
+>> "%~dp0octo-config\stop-assistant.bat" echo taskkill /F /IM python.exe ^>nul 2^>^&1
+>> "%~dp0octo-config\stop-assistant.bat" echo taskkill /F /IM pythonw.exe ^>nul 2^>^&1
+>> "%~dp0octo-config\stop-assistant.bat" echo echo [2/4] Stopping Octo server...
+>> "%~dp0octo-config\stop-assistant.bat" echo taskkill /F /IM octo.exe        ^>nul 2^>^&1
+>> "%~dp0octo-config\stop-assistant.bat" echo taskkill /F /IM octo-server.exe ^>nul 2^>^&1
+>> "%~dp0octo-config\stop-assistant.bat" echo echo [3/4] Unloading models...
+>> "%~dp0octo-config\stop-assistant.bat" echo ollama stop qwen2.5:14b ^>nul 2^>^&1
+>> "%~dp0octo-config\stop-assistant.bat" echo ollama stop gemma2:9b   ^>nul 2^>^&1
+>> "%~dp0octo-config\stop-assistant.bat" echo echo [4/4] Shutting down Ollama...
+>> "%~dp0octo-config\stop-assistant.bat" echo taskkill /F /IM "ollama app.exe" ^>nul 2^>^&1
+>> "%~dp0octo-config\stop-assistant.bat" echo taskkill /F /IM ollama.exe       ^>nul 2^>^&1
+>> "%~dp0octo-config\stop-assistant.bat" echo echo.
+>> "%~dp0octo-config\stop-assistant.bat" echo echo All stopped. VRAM free for VR.
+>> "%~dp0octo-config\stop-assistant.bat" echo timeout /t 3 ^>nul
+>> "%~dp0octo-config\stop-assistant.bat" echo endlocal
+echo    + stop-assistant.bat
+goto :eof
+
+:end
+echo.
+pause
+endlocal
