@@ -23,11 +23,9 @@ The numbered folders spell out the pipeline:
 | `octo-config` | The engine room: scripts, launchers, state files. |
 
 ## What the setup script does
-
-It is deliberately boring, and that is the point:
-
 1. **Creates the folder tree** above (reusing anything that already exists).
-2. **Copies three PowerShell helpers** (`squash-idea.ps1`, `review-prompt.ps1`, `watch-new-notes.ps1`) from a template folder, but never overwrites ones you have already edited.
+2. **Copies three PowerShell helpers** (`squash-idea.ps1`, `review-prompt.ps1`) from a template folder, but never overwrites ones you have already edited.
+
 3. **Writes three double-click launchers** into `octo-config`:
    - `start-assistant.bat` — boots Ollama and the Octo server.
    - `Squash-New-Idea.bat` — runs the main note-squashing script.
